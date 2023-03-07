@@ -17,6 +17,7 @@ From this extract the trace id   61d9270fe5a5e349
 2023-02-28T00:01:03.654235512Z [33m[jfxan][0m [1m[31m[ERROR][0m [61d9270fe5a5e349] [user_components_dao:1735      ] [main                ] Failed to get user component table id for component 'pe://Microsoft® .NET:6.0.422.16404'. err: failed to fetch user component table id
 
 Usage: python get_Trace_Id_with_ERROR_from_jfxana.py support-bundele-unzip-folder output_folder 2023-02-27T23:30:00 2023-02-28T00:30:59
+Note: The datetime parameters are in UTC ( as the logs are also in UTC)
 Example:
 python get_Trace_Id_with_ERROR_from_jfxana.py ./iss1_impact_anal_missing/chrisDaw_test/202302281747-jfxr_jfxr_jfxr@01fn44xyc9bjn01ebfnj6thp9t ./iss1_impact_anal_missing/chrisDaw_test/tmp2 2023-02-27T23:30:00 2023-02-28T00:30:59
 
