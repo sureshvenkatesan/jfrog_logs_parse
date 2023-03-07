@@ -1,5 +1,17 @@
 """
-USe argparser and get duration  in seconds  as input. Then improve this code to print all traceid and duration greater than 10 seconds
+DISCLAIMER:
+Your use of this code is governed by the following license:JFrog hereby grants you a non-
+exclusive, non-transferable, non-distributable right to use this code solely in connection with
+your use of a JFrog product or service. This code is provided 'as-is' and without any warranties or
+conditions, either express or implied including, without limitation, any warranties or conditions
+of title, non-infringement, merchantability or fitness for a particular cause. Nothing herein shall
+convey to you any right or title in the code, other than for the limited use right set forth
+herein. For the purposes hereof "you" shall mean you as an individual as well as the organization
+on behalf of which you are using the software and the JFrog product or service.
+"""
+
+"""
+Usage: print all traceid and duration greater than 10 seconds
 
 python get_Trace_Id_with_long_elapsed_time_sec.py ./iss1_impact_anal_missing/chrisDaw_test/202302281747-jfxr_jfxr_jfxr@01fn44xyc9bjn01ebfnj6thp9t ./iss1_impact_anal_missing/chrisDaw_test/tmp3 2023-02-27T23:30:00 2023-02-28T00:30:59 10
 """

@@ -1,9 +1,20 @@
 """
-In python how to parse a xray-analysis-service.log file lines logged in UTC and get lines witin a time window that have [ERROR] . From this extract the trace id   61d9270fe5a5e349
+DISCLAIMER:
+Your use of this code is governed by the following license:JFrog hereby grants you a non-
+exclusive, non-transferable, non-distributable right to use this code solely in connection with
+your use of a JFrog product or service. This code is provided 'as-is' and without any warranties or
+conditions, either express or implied including, without limitation, any warranties or conditions
+of title, non-infringement, merchantability or fitness for a particular cause. Nothing herein shall
+convey to you any right or title in the code, other than for the limited use right set forth
+herein. For the purposes hereof "you" shall mean you as an individual as well as the organization
+on behalf of which you are using the software and the JFrog product or service.
+"""
+
+"""
+Parse a xray-analysis-service.log file lines logged in UTC and get lines witin a time window that have [ERROR] . 
+From this extract the trace id   61d9270fe5a5e349
 
 2023-02-28T00:01:03.654235512Z [33m[jfxan][0m [1m[31m[ERROR][0m [61d9270fe5a5e349] [user_components_dao:1735      ] [main                ] Failed to get user component table id for component 'pe://Microsoft® .NET:6.0.422.16404'. err: failed to fetch user component table id
-
-To parse a xray-analysis-service.log file in Python and extract lines within a specific time window that have an [ERROR] message, you can use the datetime and re modules.
 
 Usage: python get_Trace_Id_with_ERROR_from_jfxana.py support-bundele-unzip-folder output_folder 2023-02-27T23:30:00 2023-02-28T00:30:59
 Example:
