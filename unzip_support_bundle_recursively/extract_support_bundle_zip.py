@@ -2,7 +2,6 @@
 # find "./202302281747-jfxr_jfxr_jfxr@01fn44xyc9bjn01ebfnj6thp9t" -type f \( -name '*.zip' -o -name '*.gz' \) -print | wc -l
 #  find the total number of files within a folder recursively
 # find ./202302281747-jfxr_jfxr_jfxr@01fn44xyc9bjn01ebfnj6thp9t -type f | wc -l
-I want a git  readme with markup for below code so I can paste it in my readme.md file :
 
 import os
 import zipfile
