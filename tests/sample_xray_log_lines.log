@@ -1,0 +1,11 @@
+2023-02-27T23:45:21.387872128Z [33m[jfxan][0m [34m[INFO ][0m [c944a71d9e6f2e48] [open_tracing_utils:86         ] [main                ] Analysis worker id 6 has completed to analyze the component: docker://ai-inference-service-integration-tests:71063 (elapsed: 6.584255704s)
+2022-11-14T11:42:50.661Z [jfxid] [INFO ] [3fb038390ab7c800] [index_worker:159              ] [main                ] Index worker 4 has completed to process message created npm-remote-cache/core-js/-/core-js-3.26.1.tgz (sha256: 16a9c7733f5e2a215f6177e82961367de2aedd1736cbff1d5836629eb1327fbb) (elapsed: 3h10m42.847811632s)
+2022-03-07T23:34:52.511Z [jfxps] [INFO ] [1701218b2caa1a25] [persist_worker:157            ] [main                ] Persist worker id 2 has completed to process message created local-iress-docker/marketdata/vendor-access-service/1.0.1717/manifest.json (sha256: a4740274e79c0e57302d82cb96d34119659e352e0e0eb4a93916b2990fd0c1a5) (elapsed: 1.637229538s)
+
+2022-03-07T23:34:49.850Z [jfxid] [INFO ] [1701218b2caa1a25] [downloader:95                 ] [main                ] Event worker id 5 has completed to process message created local-iress-docker/marketdata/vendor-access-service/1.0.1717/manifest.json (sha256: a4740274e79c0e57302d82cb96d34119659e352e0e0eb4a93916b2990fd0c1a5) (elapsed: 212.017724ms)
+
+2022-09-23T09:07:10.247Z [33m[jfxr ][0m [34m[INFO ][0m [e045337163f191f3] [alert_worker:225              ] [main                ] Alert worker finished processing alert message Workflow: scan, Subject: insights-client-3.1.7-1.el7_9.noarch.rpm, Source: default/RHEL7-cache/x86_64/Packages/i/ (elapsed: 745.309µs)
+
+2022-07-20T20:57:55.292Z  [33m[jfxid] [0m  [34m[INFO ] [0m [b9a4ca09d6bb99c7] [index_worker:159              ] [main                ] Index worker 1 has completed to process message build build://DEV :: billing :: bolton2_0-release:6 (elapsed: 4m59.760438231s)
+
+2023-03-07T17:29:17.184Z|237e65f1182939a5|10.125.72.10, 10.10.232.58, ::1, 10.10.186.73|_svc-artif-devops|POST|/api/v1/scan/graph?watch=Docker-stable-block&scan_type=binary|201|-1|1151464|632.472000|jfrog-azure-devops-extension/2.4.1
