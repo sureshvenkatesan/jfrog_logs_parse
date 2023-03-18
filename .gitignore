@@ -1,2 +1,4 @@
 venv
 .idea
+tests/clean_docker.py
+tests/cmd_to_run_test_240641_w_get_Trace_Id_with_long_elapsed_time
