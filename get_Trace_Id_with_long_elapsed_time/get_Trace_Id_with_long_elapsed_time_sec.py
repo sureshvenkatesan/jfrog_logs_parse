@@ -20,7 +20,7 @@ import os
 import re
 from datetime import datetime, timedelta
 from dateutil import parser
-
+import glob
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Parse log files for long elapsed times in  a specific time window")
@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument("end_time", type=str, help="end time of the time window in ISO 8601 format "
                                                    "(e.g. '2023-02-28T23:59:59')")
     parser.add_argument('duration', type=float, help='Duration threshold in seconds')
+    parser.add_argument('--trace_ids', type=str, help='comma-separated list of trace IDs to process')
     return parser.parse_args()
 
 
@@ -87,7 +88,7 @@ def find_elapsed_time(line):
         return 0
 
 
-def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec):
+def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec, selected_trace_ids=None):
     """
     Searches for unique trace IDs in the log files within the specified time window.
 
@@ -96,6 +97,8 @@ def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec):
         start_time (str): The start time of the time window in ISO 8601 format.
         end_time (str): The end time of the time window in ISO 8601 format.
         threshold_in_sec (float): The duration threshold in seconds.
+        selected_trace_ids (list): A list of trace IDs to search for. Defaults to None. When specified only traces
+                                   containing one or more of these trace IDs will be considered.
 
     Returns:
         list: A list of tuples containing the unique trace IDs, sorted by the timestamp in ascending order.
@@ -110,42 +113,66 @@ def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec):
     """
     unique_trace_ids = {}
 
-    for root, dirs, files in os.walk(log_folder):
-        for file in files:
-            if file.startswith("xray") and file.endswith(".log"):
-                log_file = os.path.join(root, file)
-                with open(log_file) as f:
-                    for line in f:
-                        time_match = re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d+Z', line)
-                        if time_match:
-                            timestamp_str = time_match.group(0)
-                            timestamp = parse_time(timestamp_str)
-                            if timestamp and start_time <= timestamp <= end_time:
-                                trace_id_match_found = re.search(r"\[([a-f\d]{16})\]", line)
-                                if trace_id_match_found:
-                                    trace_id = re.search(r"\[([a-f\d]{16})\]", line).group(1)
-                                    if trace_id not in unique_trace_ids:
-                                        # tracking the traceid for the first time
-                                        unique_trace_ids[trace_id] = (timestamp, 0, 0, 0, 0)
+    # Define the order of files to be searched
+    file_order = [
+        'xray-request',
+        'xray-server-service',
+        'xray-indexer-service',
+        'xray-persist-service',
+        'xray-analysis-service'
+    ]
 
-                                    elapsed_in_seconds = find_elapsed_time(line)
-                                    if elapsed_in_seconds > threshold_in_sec:
-                                        time_trace_id_first_seen, time_trace_id_first_exceeds_threshold, \
-                                        elapsed_duration_first_exceeds_threshold, \
-                                        time_trace_id_max_exceeds_threshold, \
-                                        elapsed_duration_max_exceeds_threshold = unique_trace_ids[trace_id]
+    # Search for the unique trace IDs in the log files
+    for file_prefix in file_order:
+        # search the specified folder and its subdirectories recursively and return
+        # a list of file paths that match the given pattern
+        log_files = glob.glob(os.path.join(log_folder, '**', f'{file_prefix}*.log'), recursive=True)
+        # sort the list of files based on their modification time in ascending order (i.e., oldest to most recent)
+        log_files.sort(key=os.path.getmtime)
 
-                                        if elapsed_duration_first_exceeds_threshold == 0:
-                                            # we are storing the elapsed duration when this trace ID first exceeded
-                                            # given threshold_in_sec within the specified time range
-                                            unique_trace_ids[trace_id] = (time_trace_id_first_seen, timestamp,
-                                                                          elapsed_in_seconds, 0, 0)
-                                        else:
-                                            if elapsed_in_seconds > elapsed_duration_first_exceeds_threshold:
-                                                if elapsed_in_seconds > elapsed_duration_max_exceeds_threshold:
-                                                    # we found another line for this trace_id with a new max "(elapsed:"
-                                                    # Keep track of this time .
-                                                    unique_trace_ids[trace_id] = (time_trace_id_first_seen,
+        # Read the log files and parse the lines
+        for log_file in log_files:
+            with open(log_file) as f:
+                for line in f:
+                    # Filter the trace IDs if selected_trace_ids is not None
+                    if selected_trace_ids:
+                        if not any(item in line for item in selected_trace_ids):
+                            continue
+                    # Find the timestamp in the line
+                    time_match = re.search(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d+Z', line)
+                    if time_match:
+                        timestamp_str = time_match.group(0)
+                        timestamp = parse_time(timestamp_str)
+
+                        # Check if the timestamp is within the specified time range
+                        if timestamp and start_time <= timestamp <= end_time:
+                            # Find the trace ID in the line
+                            trace_id_match_found = re.search(r"\[([a-f\d]{16})\]", line)
+                            if trace_id_match_found:
+                                trace_id = re.search(r"\[([a-f\d]{16})\]", line).group(1)
+
+                                # Store the trace ID and associated values
+                                if trace_id not in unique_trace_ids:
+                                    # tracking the traceid for the first time
+                                    unique_trace_ids[trace_id] = (timestamp, 0, 0, 0, 0)
+
+                                elapsed_in_seconds = find_elapsed_time(line)
+                                if elapsed_in_seconds > threshold_in_sec:
+                                    time_trace_id_first_seen, time_trace_id_first_exceeds_threshold, \
+                                    elapsed_duration_first_exceeds_threshold, \
+                                    time_trace_id_max_exceeds_threshold, \
+                                    elapsed_duration_max_exceeds_threshold = unique_trace_ids[trace_id]
+
+                                    if elapsed_duration_first_exceeds_threshold == 0:
+                                        # Store the elapsed duration when this trace ID first exceeded the given threshold
+                                        unique_trace_ids[trace_id] = (time_trace_id_first_seen, timestamp,
+                                                                      elapsed_in_seconds, 0, 0)
+                                    else:
+                                        if elapsed_in_seconds > elapsed_duration_first_exceeds_threshold:
+                                            if elapsed_in_seconds > elapsed_duration_max_exceeds_threshold:
+                                                # Store the new max "(elapsed:" duration when this trace ID exceeded
+                                                # the given threshold
+                                                unique_trace_ids[trace_id] = (time_trace_id_first_seen,
                                                                                   time_trace_id_first_exceeds_threshold,
                                                                                   elapsed_duration_first_exceeds_threshold,
                                                                                   timestamp, elapsed_in_seconds)
@@ -246,7 +273,7 @@ def process_log_file(log_file, sorted_unique_trace_ids, trace_id_files):
     Returns:
         None
     """
-    logged_log_file_details_in_trace_ids = []
+    logged_log_file_details_for_trace_ids = []
     with open(log_file) as f:
         previous_matched_trace_id = None
         for line in f:
@@ -256,8 +283,8 @@ def process_log_file(log_file, sorted_unique_trace_ids, trace_id_files):
                 max_elapsed_in_seconds_gt_duration = next(
                     item for item in sorted_unique_trace_ids if item[1] in line)
                 trace_id_file = trace_id_files[matched_trace_id]
-                if matched_trace_id not in logged_log_file_details_in_trace_ids:
-                    logged_log_file_details_in_trace_ids.append(matched_trace_id)
+                if matched_trace_id not in logged_log_file_details_for_trace_ids:
+                    logged_log_file_details_for_trace_ids.append(matched_trace_id)
                     log_dir, log_file_basename = os.path.split(log_file)
                     trace_id_file.write(
                         f'=========================={os.linesep}{log_dir}{os.linesep}{log_file_basename}{os.linesep}')
@@ -269,34 +296,55 @@ def process_log_file(log_file, sorted_unique_trace_ids, trace_id_files):
                     timestamp_str = time_match.group(0)
                     timestamp = parse_time(timestamp_str)
                     if timestamp:
-                        # this must be a new request log entry from a request log file. So we don't have to write it
+                        # this must be a 'xray-request' or 'router-request' log entry for a different Trace ID.
+                        # So we don't have to write it
                         previous_matched_trace_id = None
                     else:
-                        if not log_file.startswith("router") and log_file.endswith(".log"):
-                            # this line is not from the router log file
-                            trace_id_file = trace_id_files[previous_matched_trace_id]
-                            trace_id_file.write(line)
+                        #if not log_file.startswith("router") and log_file.endswith(".log"):
+                        # this must be an error trace belonging to the previous_matched_trace_id
+                        trace_id_file = trace_id_files[previous_matched_trace_id]
+                        trace_id_file.write(line)
 
 
 def process_log_files(log_folder, sorted_unique_trace_ids, trace_id_files):
     """
-    Processes all log files found in the specified folder and its subfolders, searching for traces that
-    exceed the threshold duration and writes each line containing the trace to a separate file for further
-    analysis.
+    Searches for log files in the specified folder and its subdirectories that match the given pattern,
+    then processes the files to extract the data associated with the selected trace IDs and writes it to
+    the corresponding trace ID files.
 
     Args:
-        log_folder (str): The path to the folder containing log files.
-        sorted_unique_trace_ids (list): A list of unique trace IDs sorted by timestamp in ascending order.
-        trace_id_files (dict): A dictionary where the keys are trace IDs and the values are file objects.
+        log_folder (str): The path to the folder containing the log files.
+        sorted_unique_trace_ids (list): A list of tuples containing the unique trace IDs to be processed,
+            sorted by the timestamp in ascending order. Each tuple contains the following elements:
+            - Position of the trace ID in the sorted list.
+            - Trace ID (16-digit hex string).
+            - Timestamp when the trace ID was first seen.
+            - Timestamp when the trace ID first exceeded the duration threshold in the specified time window.
+            - Elapsed time (in seconds) for the first occurrence when the trace ID exceeded the threshold.
+            - Timestamp when the trace ID last exceeded the duration threshold in the specified time window.
+            - Elapsed time (in seconds) for the last occurrence when the trace ID exceeded the threshold.
+        trace_id_files (dict): A dictionary containing the file handles for each trace ID file.
 
     Returns:
         None
     """
-    for root, dirs, files in os.walk(log_folder):
-        for file in files:
-            if file.startswith("xray") and file.endswith(".log"):
-                log_file = os.path.join(root, file)
-                process_log_file(log_file, sorted_unique_trace_ids, trace_id_files)
+    file_prefix_order = [
+        'xray-request',
+        'xray-server-service',
+        'xray-indexer-service',
+        'xray-persist-service',
+        'xray-analysis-service',
+        'router-request'
+    ]
+
+    for file_prefix in file_prefix_order:
+        # search the specified folder and its subdirectories recursively and return
+        # a list of file paths that match the given pattern
+        files = glob.glob(os.path.join(log_folder, '**', f'{file_prefix}*.log'), recursive=True)
+        # sort the list of files based on their modification time in ascending order (i.e., oldest to most recent)
+        files.sort(key=os.path.getmtime)
+        for log_file in files:
+            process_log_file(log_file, sorted_unique_trace_ids, trace_id_files)
 
 
 def close_trace_id_files(open_trace_id_files):
@@ -318,11 +366,35 @@ def main():
     # end_time = datetime.fromisoformat(args.end_time)
     start_time = parser.isoparse(args.start_time)
     end_time = parser.isoparse(args.end_time)
-    sorted_unique_trace_ids = find_unique_trace_ids(args.log_folder, start_time, end_time, args.duration)
-    display_unique_trace_ids(sorted_unique_trace_ids)
-    trace_id_files = open_trace_id_files(args.output_folder, sorted_unique_trace_ids)
-    process_log_files(args.log_folder, sorted_unique_trace_ids, trace_id_files)
-    close_trace_id_files(trace_id_files)
+    if args.trace_ids:
+        selected_trace_ids = args.trace_ids.split(",")
+        sorted_unique_trace_ids = find_unique_trace_ids(args.log_folder, start_time, end_time, args.duration, selected_trace_ids)
+    else:
+        sorted_unique_trace_ids = find_unique_trace_ids(args.log_folder, start_time, end_time, args.duration)
+
+    # prompt user for option
+    option = input("Enter an option (1 for display trace IDs, 2 for process trace IDs): ")
+
+    if option == "1":
+        # display all trace IDs
+        display_unique_trace_ids(sorted_unique_trace_ids)
+    elif option == "2":
+        # prompt user for trace IDs to process
+        print("Here are the available trace IDs:")
+        display_unique_trace_ids(sorted_unique_trace_ids)
+        selection = input("Enter comma-separated list of trace IDs to process (or leave blank for all): ")
+
+        # convert input to list of trace IDs
+        selected_trace_ids = selection.split(",") if selection else [t[1] for t in sorted_unique_trace_ids]
+
+        # filter trace IDs based on selection
+        selected_trace_ids = [t for t in sorted_unique_trace_ids if t[1] in selected_trace_ids]
+
+        trace_id_files = open_trace_id_files(args.output_folder, selected_trace_ids)
+        process_log_files(args.log_folder, selected_trace_ids, trace_id_files)
+        close_trace_id_files(trace_id_files)
+    else:
+        print("Invalid option.")
 
 
 if __name__ == '__main__':
