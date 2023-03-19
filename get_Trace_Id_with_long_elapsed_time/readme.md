@@ -35,6 +35,12 @@ For example, to process trace IDs 5700c3a699405ab3 and 175b05a436088101 , use th
 ```commandline
 python get_Trace_Id_with_long_elapsed_time_sec.py /path/to/log/folder /path/to/output/folder 2023-03-01T00:00:00Z 2023-03-01T23:59:59Z 30 --trace_ids 5700c3a699405ab3,175b05a436088101
 ```
+or
+```commandline
+python get_Trace_Id_with_long_elapsed_time_sec.py /path/to/log/folder /path/to/output/folder \
+2023-03-01T00:00:00Z 2023-03-01T23:59:59Z 30 \
+--trace_ids 5700c3a699405ab3,175b05a436088101
+```
 
 This will search the log files in `/path/to/log/folder` for trace ids that took longer than 30 seconds 
 between `2023-03-01T00:00:00Z` and `2023-03-01T23:59:59Z` 
