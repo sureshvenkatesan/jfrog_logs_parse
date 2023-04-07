@@ -13,7 +13,13 @@ on behalf of which you are using the software and the JFrog product or service.
 """
 Usage: print all traceid and duration greater than 10 seconds
 
-python get_Trace_Id_with_long_elapsed_time_sec.py ./iss1_impact_anal_missing/chrisDaw_test/202302281747-jfxr_jfxr_jfxr@01fn44xyc9bjn01ebfnj6thp9t ./iss1_impact_anal_missing/chrisDaw_test/tmp3 2023-02-27T23:30:00Z 2023-02-28T00:30:59Z 10
+python get_Trace_Id_with_long_elapsed_time/get_Trace_Id_with_long_elapsed_time_sec_in_RT.py \
+/Users/sureshv/Documents/From_Customer/xyz/245256_500_err/Artifactory500s \
+/Users/sureshv/Documents/From_Customer/xyz/245256_500_err/build_500_err \
+2023-03-28T00:00:00Z 2023-03-29T23:59:59Z 0 --trace_ids  "3c8f9b72dad6208f,402a4cb23857cf0,42807c5da98480f2"
+
+or
+--trace_ids "6874e79577a3907 ,402a4cb23857cf0 "
 """
 import argparse
 import os
@@ -104,7 +110,7 @@ def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec, se
         list: A list of tuples containing the unique trace IDs, sorted by the timestamp in ascending order.
               Each tuple contains the following elements:
               - Position of the trace ID in the sorted list.
-              - Trace ID (16-digit hex string).
+              - Trace ID (16-digit hex string or 15-digit with last char as space).
               - Timestamp when the trace ID was first seen.
               - Timestamp when the trace ID first exceeded the duration threshold in the specified time window.
               - Elapsed time (in seconds) for the first occurrence when the trace ID exceeded the threshold.
@@ -113,13 +119,32 @@ def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec, se
     """
     unique_trace_ids = {}
 
-    # Define the order of files to be searched
+    """
+    Define the order of files to be searched. Files omitted in this list are:
+    'access-audit',
+    'access-request',
+    'access-security-audit',
+    'access-service',
+    'artifactory-metrics',
+    'artifactory-metrics_events',
+    'event-request',
+    'event-service',
+    'frontend-metrics',
+    'frontend-request',
+    'frontend-service',
+    'integration-request',
+    'integration-service',
+    'metadata-',
+    'observability-'
+    'router-service'      
+    """
     file_order = [
-        'xray-request',
-        'xray-server-service',
-        'xray-indexer-service',
-        'xray-persist-service',
-        'xray-analysis-service'
+        'artifactory-request',
+        'artifactory-service',
+        'artifactory-access',
+        'artifactory-binarystore',
+        'artifactory-request-out',
+        'router-request'
     ]
 
     # Search for the unique trace IDs in the log files
@@ -146,10 +171,11 @@ def find_unique_trace_ids(log_folder, start_time, end_time, threshold_in_sec, se
 
                         # Check if the timestamp is within the specified time range
                         if timestamp and start_time <= timestamp <= end_time:
-                            # Find the trace ID in the line
-                            trace_id_match_found = re.search(r"\[([a-f\d]{16})\]", line)
+                            # Find the trace ID in the line which may be 15 or 16 chars [402a4cb23857cf0 ] or [3c8f9b72dad6208f]
+                            # trace_id_match_found = re.search(r"\[([a-f\d]{16})\]", line)
+                            trace_id_match_found = re.search(r"\[([a-fA-F\d]{15,16})\s*\]", line)
                             if trace_id_match_found:
-                                trace_id = re.search(r"\[([a-f\d]{16})\]", line).group(1)
+                                trace_id = trace_id_match_found.group(1)
 
                                 # Store the trace ID and associated values
                                 if trace_id not in unique_trace_ids:
@@ -328,16 +354,16 @@ def process_log_files(log_folder, sorted_unique_trace_ids, trace_id_files):
     Returns:
         None
     """
-    file_prefix_order = [
-        'xray-request',
-        'xray-server-service',
-        'xray-indexer-service',
-        'xray-persist-service',
-        'xray-analysis-service',
+    file_order = [
+        'artifactory-request',
+        'artifactory-service',
+        'artifactory-access',
+        'artifactory-binarystore',
+        'artifactory-request-out',
         'router-request'
     ]
 
-    for file_prefix in file_prefix_order:
+    for file_prefix in file_order:
         # search the specified folder and its subdirectories recursively and return
         # a list of file paths that match the given pattern
         files = glob.glob(os.path.join(log_folder, '**', f'{file_prefix}*.log'), recursive=True)

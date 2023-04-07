@@ -8,7 +8,7 @@ This script extracts a nested zip file that may contain .gz files. It extracts a
 
 ## Usage
 ```commandline
-python extract_nested_zip.py zip_file output_dir
+python extract_support_bundle_zip.py zip_file output_dir
 ```
 
 ## Arguments

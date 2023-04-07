@@ -34,23 +34,16 @@ def parse_args():
     parser.add_argument("output_folder", type=str, help="path to the folder where the trace_id files will be created")
     parser.add_argument("start_time", type=str, help="start time of the time window in ISO 8601 format (e.g. '2023-02-28T00:00:00')")
     parser.add_argument("end_time", type=str, help="end time of the time window in ISO 8601 format (e.g. '2023-02-28T23:59:59')")
-    parser.add_argument("--file_order", nargs='+', help="list of log files to include in the analysis", default=None)
     return parser.parse_args()
 
 def parse_time(timestamp_str):
     try:
-        # Parse the timestamp from the log line using regular expressions
-        pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z"
-        match = re.search(pattern, timestamp_str)
-        if match:
-            timestamp = datetime.fromisoformat(match.group(0).replace("Z", "+00:00"))
-            return timestamp
-        else:
-            return None
+        # Parse the timestamp from the log line
+        timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+        return timestamp
     except ValueError:
         # To Skip lines that don't start with a valid timestamp return None
         return None
-
 
 def find_unique_trace_ids(log_folder, start_time, end_time):
     # Set the regex pattern to match lines with [ERROR] and extract the trace id
@@ -65,24 +58,20 @@ def find_unique_trace_ids(log_folder, start_time, end_time):
             if file.startswith("xray-analysis-service") and file.endswith(".log"):
                 # Build the full path to the log file
                 log_file = os.path.join(root, file)
-
+                
                 # Open the log file and read line by line
                 with open(log_file) as f:
 
                     for line in f:
-                        # Extract the timestamp from the log line using regular expressions
-                        pattern = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z"
-                        match = re.search(pattern, line)
-                        if match:
-                            timestamp_str = match.group(0)
-                            timestamp = parse_time(timestamp_str)
-                            # Check if the line is within the time window and matches the regex pattern and has "[ERROR]"
-                            if timestamp and start_time <= timestamp <= end_time and "[ERROR]" in line:
-                                match = re.search(pattern, line)
-                                if match:
-                                    trace_id = match.group("trace_id")
-                                    if trace_id not in unique_trace_ids:
-                                        unique_trace_ids[trace_id] = timestamp
+                        timestamp_str = line[:26]
+                        timestamp = parse_time(timestamp_str)
+                        # Check if the line is within the time window and matches the regex pattern and has "[ERROR]"
+                        if timestamp and start_time <= timestamp <= end_time and "[ERROR]" in line:
+                            match = re.search(pattern, line)
+                            if match:
+                                trace_id = match.group("trace_id")
+                                if trace_id not in unique_trace_ids:
+                                    unique_trace_ids[trace_id] = timestamp
     
     # Sort the dictionary by value (timestamp) in ascending order and store as tuple in a list
     # example: [(0, 'f02b59ef1fbc357b', datetime.datetime(2023, 2, 27, 23, 30, 50, 380110)), (1, '2e66de966533dd54', datetime.datetime(2023, 2, 27, 23, 32, 52, 990673))]
@@ -139,7 +128,8 @@ def process_log_files(log_folder, sorted_unique_trace_ids, trace_id_files):
                             previous_matched_trace_id = matched_trace_id
                         elif previous_matched_trace_id is not None:
                             # Parse the timestamp from the log line
-                            timestamp = parse_time(line)
+                            timestamp_str = line[:26]
+                            timestamp = parse_time(timestamp_str)
                             if timestamp:
                                 # this line starts with a timestamp. So it may have a blank trace_id or a trace_id for which there is no ERROR
                                 previous_matched_trace_id = None
@@ -149,7 +139,6 @@ def process_log_files(log_folder, sorted_unique_trace_ids, trace_id_files):
                                 if not (file.startswith("router") and file.endswith(".log")):
                                     trace_id_file = trace_id_files[previous_matched_trace_id]
                                     trace_id_file.write(line)
-
 
 def close_trace_id_files(open_trace_id_files):
     # Close all the trace ID files
