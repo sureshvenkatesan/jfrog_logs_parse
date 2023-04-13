@@ -43,3 +43,25 @@ sh -c 'fullpath=$(realpath "{}"); awk -F"|" "(\$7 < 200 || \$7 >= 300) && index(
 { if (FILENAME != prevfile) { printf \"\n%s:\n\", \"${fullpath}\"; prevfile = FILENAME } printf \"%s\n\",  \$0 }" "{}"' \;
 
 ```
+
+---
+
+How to find the `scanBuild` details in xray-server-service.log ?
+Unzip the xray-server-service.log from the support bundle. All log entries are in UTC.
+
+```
+grep -r "scanBuild" | grep  2023-02-27T23
+```
+
+You will find the trace ID for the scanBuild i.e "POST requests for /api/v1/scanBuild" log a log entry like:
+
+`2023-02-27T23:43:46.565042446Z [jfxr ] [INFO ] [4246ffb450dde750] [http_handler_ext:106          ] [main                ] Handler about to call scanBuild for default_cd-test-image_1`
+
+Next grep recursively for a pattern and print the filename only once along with the matching lines in that file:
+```
+grep -rl "cd-test-image_1" /path/to/directory | while read filename; do echo "$filename"; grep -h "cd-test-image_1" "$filename"; echo "====================================="; done
+
+For example: 
+
+grep -rl "61d9270fe5a5e349" . | while read filename; do echo "$filename"; grep -h "61d9270fe5a5e349" "$filename"; echo "====================================="; done  >  trace_61d9270fe5a5e349.txt
+```
